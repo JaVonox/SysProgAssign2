@@ -2,7 +2,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 
-# Comment added to test git push integration. Ignore this.
+# Comment test to validate git interactions
 # Start the first CPU: switch to 32-bit protected mode, jump into C.
 # The BIOS loads this code from the first sector of the hard disk into
 # memory at physical address 0x7c00 and starts executing in real mode
