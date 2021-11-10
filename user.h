@@ -25,6 +25,10 @@ int sleep(int);
 int uptime(void);
 int getch(void);
 int setvideomode(int);
+//Assignment calls
+int setpixel(int,int,int); //hdc,x,y
+int moveto(int,int,int); //hdc,x,y
+int lineto(int,int,int); //hdc,x,y
 
 // ulib.c
 int stat(const char*, struct stat*);
