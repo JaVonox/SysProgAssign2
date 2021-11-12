@@ -3,9 +3,28 @@
 #include "memlayout.h"
 
 static struct { //Stores the current graphics cursor position
-    int x;
+    int x; //Due to the nature of ints, x and y are defaulted to 0 each. Hence fufilling the requirement for default values.
     int y;
 } movetoXY;;
+
+
+int SimpleAbs(int a) //Simple implementation of Abs
+{
+    if(a < 0)
+    {
+        return a*-1;
+    }
+    else
+    {
+        return a;
+    }
+}
+
+void ValueCapper(int *a,int capacity)
+{
+    *a = ((*a) > capacity) ? capacity : *a;
+    *a = ((*a) < 0) ? 0 : *a;
+}
 
 void PixelSetterFunc(int hdc,int x,int y, int col) //col is maybe temporary - if im not mistaken HDC should handle colour data
 {
@@ -51,6 +70,9 @@ int sys_setpixel(void) //int hdc, int x, int y
         return -1;
     }
 	
+    ValueCapper(&x,319);
+    ValueCapper(&y,199);
+
 	PixelSetterFunc(0,x,y,0xF);
 	
     return 0;
@@ -68,6 +90,9 @@ int sys_moveto(void) //int hdc, int x, int y
     {
         return -1;
     }
+
+    ValueCapper(&x,319);
+    ValueCapper(&y,199);
 
     MovePos(x,y);
 
@@ -112,18 +137,6 @@ void YIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from y0 to y1
     }
 }
 
-int SimpleAbs(int a) //Simple implementation of Abs
-{
-    if(a < 0)
-    {
-        return a*-1;
-    }
-    else
-    {
-        return a;
-    }
-}
-
 int sys_lineto(void) //int hdc, int nx, int ny
 {
     int hdc,nx,ny;
@@ -131,6 +144,15 @@ int sys_lineto(void) //int hdc, int nx, int ny
     argint(0, &hdc); //take arguments
     argint(1, &nx);
     argint(2, &ny);
+
+    ValueCapper(&nx,319);
+    ValueCapper(&ny,199);
+
+    if(hdc < 0 || nx < 0 || ny < 0)
+    {
+        return -1;
+    }
+
 
     //Bresenham's line algorithm
 

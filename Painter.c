@@ -10,17 +10,7 @@ void ExampleSquare()
     lineto(0, 200, 150);
     lineto(0, 100, 150);
     lineto(0, 100, 50);
-}
-
-void PixelSetter(int x,int y)
-{
-    setpixel(0,x,y);
-}
-
-void LineSetter(int x0, int y0, int x1, int y1)
-{
-    moveto(0,x0,y0);
-    lineto(0,x1,y1);
+    moveto(0,0,0); //Reset to default position
 }
 
 int main(int argc, char *argv[]) 
@@ -32,26 +22,48 @@ int main(int argc, char *argv[])
     // x,y
     //allows setting of a pixel
     //3. -l
-    // x0,y0,x1,y1
-    setvideomode(0x13);
+    // x,y
+    // draws a line to x1 y1
+    //4. -m
+    // x,y
+    // draws a line to x and y without changing the cursor position
 
-    //add error handling?
+    //add checking to ensure values are integer
+
     //atoi uses arguments and converts them to their integer values (not using ascii)
 
-    if(strcmp(argv[1],"-e") == 0)
+    if(strcmp(argv[1],"-e") == 0 && argc >= 0)
     {
+        setvideomode(0x13);
         ExampleSquare();
+        getch(); //Expect input
+        setvideomode(0x03);
     }
-    else if(strcmp(argv[1],"-p") == 0)
+    else if(strcmp(argv[1],"-p") == 0 && argc >= 4)
     {
-        PixelSetter(atoi(argv[2]),atoi(argv[3])); 
+        setvideomode(0x13);
+        setpixel(0,atoi(argv[2]),atoi(argv[3])); 
+        getch(); //Expect input
+        setvideomode(0x03);
     }
-    else if(strcmp(argv[1],"-l") == 0)
+    else if(strcmp(argv[1],"-l") == 0 && argc >= 4)
     {
-        LineSetter(atoi(argv[2]),atoi(argv[3]),atoi(argv[4]),atoi(argv[5]));
+        setvideomode(0x13);
+        lineto(0,atoi(argv[2]),atoi(argv[3]));
+        getch(); //Expect input
+        setvideomode(0x03);
+    }
+    else if(strcmp(argv[1],"-m") == 0 && argc >= 4)
+    {
+        int newX = atoi(argv[2]);
+        int newY = atoi(argv[3]);
+        moveto(0,newX,newY);
+        printf(1,"Cursor position moved\n");
+    }
+    else
+    {
+        printf(1,"Invalid Arguments. Painter accepts the following arguments:\n -e (Show example image) \n -p [X] [Y] (Draw pixel) \n -l [X] [Y] (Draw line to location) \n -m [X] [Y] (Set cursor position)\n");
     }
 
-    getch(); //Expect input
-    setvideomode(0x03);
     exit();
 }
