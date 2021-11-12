@@ -198,6 +198,7 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_DBGFunc\
+	_Painter\
 
 fs.img: mkfs $(UPROGS)
 	./mkfs fs.img $(UPROGS)
