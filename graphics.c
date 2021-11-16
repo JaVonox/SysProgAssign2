@@ -258,6 +258,12 @@ int sys_fillrect(void) //hdc, pointer to rect
         return -1;
     }
 
+    //Limits values
+    ValueCapper(&pointedRect->top,199);
+    ValueCapper(&pointedRect->bottom,199);
+    ValueCapper(&pointedRect->left,319);
+    ValueCapper(&pointedRect->right,319);
+
     for(int y = pointedRect->bottom; y <= pointedRect->top;y++) //fills the rectangle by drawing each line
     {
         LineDraw(pointedRect->left,y,pointedRect->right,y);
