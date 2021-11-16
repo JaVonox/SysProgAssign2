@@ -39,7 +39,10 @@ my @syscalls = (
 				"setvideomode",
 				"setpixel",
 				"moveto",
-				"lineto"
+				"lineto",
+				"setpencolour",
+				"selectpen",
+				"fillrect"
 			   );
 
 my $i;			   
