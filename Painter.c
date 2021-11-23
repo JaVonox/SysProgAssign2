@@ -5,26 +5,59 @@
 
 
 //Used for the painting functions from stage 1
-int ExampleSquare()
+int ExampleSquare(int hdc)
 {
     int errors=0; //Since a valid response always equals 0, anything less than 0 will mean an error has occured.
-    errors += moveto(0, 100, 50);
-    errors += lineto(0, 200, 50);
-    errors += lineto(0, 200, 150);
-    errors += lineto(0, 100, 150);
-    errors += lineto(0, 100, 50);
-    errors += moveto(0,0,0); //Reset to default position
+    errors += moveto(hdc, 100, 50);
+    errors += lineto(hdc, 200, 50);
+    errors += lineto(hdc, 200, 150);
+    errors += lineto(hdc, 100, 150);
+    errors += lineto(hdc, 100, 50);
+    errors += moveto(0,0,0); //Reset to 0,0 position
     return errors;
 }
 
-//char* argsBuffer[30]; //stores the partitioned args in the input
-//char inputbuffer[30];
-
-int AcceptInput()
+int AcceptInput(char argsBuffer[30][30])
 {
     //gets() for input
     //Split args into different char* and store in global space
     //return arg count
+
+    char inputbuffer[30];
+
+    gets(inputbuffer,25); //get input
+    int inputLen= strlen(inputbuffer) - 1; //length -1 (to skip the end character)
+    
+    int charIter=0;
+    int wordIter=0;
+
+    char preBuffArgs[30][30]= {}; //before any fixing can be done to the arg order
+    for(int i=0;i<inputLen;i++)
+    {
+        if( inputbuffer[i] == ' ' || inputbuffer[i] == '\0' ) //check for space or newline char
+        {
+            preBuffArgs[wordIter][charIter] = '\0';
+            wordIter++; //add an extra word to the list
+            charIter=0; //reset the character value to 0
+        }
+        else
+        {
+            preBuffArgs[wordIter][charIter] = inputbuffer[i];
+            charIter++; //increment the character value
+        }
+    }
+
+    int lastIndex =0; //count the index of the argument
+    for(int x=0;x<wordIter+1;x++)
+    {
+        if(strcmp(preBuffArgs[x],"") != 0)
+        {
+            strcpy(argsBuffer[lastIndex],preBuffArgs[x]); //copy the contents of preBuff into argsBuffer 
+            lastIndex++; //add to next index
+        }
+    }
+
+    return lastIndex; //amount of words generated
 }
 
 int main(int argc, char *argv[]) 
@@ -34,25 +67,40 @@ int main(int argc, char *argv[])
 
     //atoi uses arguments and converts them to their integer values (not using ascii)
     int currentHDC = -1; //stores current HDC value
-    printf(1,"Entered painter\n");
+    printf(1,"Entered Painter\n");
+
     while(1)
     {
-        printf(1,">");
+        printf(1,"HDC%d>",currentHDC);
+        char argsBuffer[30][30] = {}; //stores the partitioned args in the input
+        int argsCount = AcceptInput(argsBuffer); //gets count of arguments
 
-        int argsCount = AcceptInput();
-
-        for(int x =0;x<argsCount;x++)
-        {
-            printf(1,"%s|\n",argsBuffer[x]);
-        }
-        
         int errorCode=0; //This should always be 0. If the value is -1 this means something failed.
-        printf(1,"HDC %d\n", currentHDC);
-
-        if(strcmp(argsBuffer[1],"-e") == 0 && argsCount >= 0) //draw example square
+        if(strcmp(argsBuffer[0],"Painter") != 0)
+        {
+            printf(1,"All commands must be preceeded by the word 'Painter'\n");
+        }
+        else if(strcmp(argsBuffer[1],"-nHDC") == 0 && argsCount >= 0) //-nHDC declares a new HDC item
+        {
+            errorCode = beginpaint(0); //create a new HDC object
+            if(errorCode != -1){
+                printf(1,"Created new HDC at index %d\n",errorCode);
+                currentHDC = errorCode;
+            }
+        }
+        else if(strcmp(argsBuffer[1],"-exit") == 0)
+        {
+            printf(1,"Quitting Painter\n");
+            break;
+        }
+        else if(currentHDC == -1)
+        {
+            printf(1,"No device context is currently selected, use 'Painter -nHDC' to create a new device context.");
+        }
+        else if(strcmp(argsBuffer[1],"-e") == 0 && argsCount >= 0) //draw example square
         {
             setvideomode(0x13);
-            errorCode = ExampleSquare();
+            errorCode = ExampleSquare(currentHDC);
             if(errorCode != -1){getch();} //Expect input
             setvideomode(0x03);
         }
@@ -89,7 +137,7 @@ int main(int argc, char *argv[])
             errorCode = setpencolour(index,r,g,b);
             if(errorCode != -1){printf(1,"Set new pen colour at index %d\n",index);}
         }
-        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3) //get pointer
+        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3) //get pen
         {
             int pen = atoi(argsBuffer[2]);
             errorCode =selectpen(currentHDC,pen);
@@ -121,23 +169,11 @@ int main(int argc, char *argv[])
             newRect.right = topX;
             
             setvideomode(0x13);
-            errorCode = fillrect(0,&newRect);
+            errorCode = fillrect(currentHDC,&newRect);
 
             if(errorCode != -1){getch();}; 
             setvideomode(0x03);
 
-        }
-        else if(strcmp(argsBuffer[1],"-nHDC") == 0 && argsCount >= 0) //-nHDC declares a new HDC item
-        {
-            errorCode = beginpaint(0); //create a new HDC object
-            if(errorCode != -1){
-                printf(1,"Created new HDC at index %d\n",errorCode);
-                currentHDC = errorCode;
-            }
-        }
-        else if(strcmp(argsBuffer[1],"-exit") == 0)
-        {
-            break;
         }
         else
         {

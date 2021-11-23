@@ -74,7 +74,7 @@ int sys_setpixel(void) //int hdc, int x, int y
     ValueCapper(&x,319);
     ValueCapper(&y,199);
 
-	PixelSetterFunc(0,x,y);
+	PixelSetterFunc(hdc,x,y);
 	
     return 0;
 }
@@ -103,7 +103,7 @@ int sys_moveto(void) //int hdc, int x, int y
     return 0;
 }
 
-void XIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from x0 to x1
+void XIncPlotter(int x0, int y0, int x1, int y1, int hdc) //Bresenham but from x0 to x1
 {
     int xInc = (x1 - x0);
     int yInc = (y1 - y0);
@@ -112,7 +112,7 @@ void XIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from x0 to x1
     int curY = y0;
     for (int curX = x0; curX <= x1; curX++)
     {
-        PixelSetterFunc(0,curX, curY);
+        PixelSetterFunc(hdc,curX, curY);
         if(D > 0)
         {
             curY = curY + 1;
@@ -122,7 +122,7 @@ void XIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from x0 to x1
     }
 }
 
-void YIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from y0 to y1
+void YIncPlotter(int x0, int y0, int x1, int y1, int hdc) //Bresenham but from y0 to y1
 {
     int xInc = (x1 - x0);
     int yInc = (y1 - y0);
@@ -131,7 +131,7 @@ void YIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from y0 to y1
     int curX = x0;
     for (int curY = y0; curY <= y1; curY++)
     {
-        PixelSetterFunc(0,curX, curY);
+        PixelSetterFunc(hdc,curX, curY);
         if(D > 0)
         {
             curX = curX + 1;
@@ -141,7 +141,7 @@ void YIncPlotter(int x0, int y0, int x1, int y1) //Bresenham but from y0 to y1
     }
 }
 
-void LineDraw(int x0,int y0, int x1,int y1)
+void LineDraw(int x0,int y0, int x1,int y1, int hdc)
 {
     //Bresenham's line algorithm
 
@@ -152,22 +152,22 @@ void LineDraw(int x0,int y0, int x1,int y1)
     {
         if(xDif <= 0) //If x goes from low to high
         {
-            XIncPlotter(x1,y1,x0,y0);
+            XIncPlotter(x1,y1,x0,y0,hdc);
         }
         else //high to low
         {
-            XIncPlotter(x0,y0,x1,y1);
+            XIncPlotter(x0,y0,x1,y1,hdc);
         }
     }
     else
     {
         if(yDif <= 0) //If y goes from low to high
         {
-            YIncPlotter(x1,y1,x0,y0);
+            YIncPlotter(x1,y1,x0,y0,hdc);
         }
         else //high to low
         {
-            YIncPlotter(x0,y0,x1,y1);
+            YIncPlotter(x0,y0,x1,y1,hdc);
         }
     }
 
@@ -191,7 +191,7 @@ int sys_lineto(void) //int hdc, int nx, int ny
     ValueCapper(&nx,319);
     ValueCapper(&ny,199);
 
-    LineDraw(hdcVals.hdcObjects[hdc].x,hdcVals.hdcObjects[hdc].y,nx,ny);
+    LineDraw(hdcVals.hdcObjects[hdc].x,hdcVals.hdcObjects[hdc].y,nx,ny,hdc);
 
     MovePos(hdc,nx,ny); //set new position
     
@@ -199,7 +199,7 @@ int sys_lineto(void) //int hdc, int nx, int ny
 }
 
 
-int sys_setpencolour(void)
+int sys_setpencolour(void) //Operates outside of HDC
 {
     //index cant be less than 15 - these values are already written to.
     int index,r,g,b;
@@ -256,7 +256,6 @@ int sys_selectpen(void)
         cprintf("This operation would get a pen outside of the allocated memory (16-255) and therefore is not permitted\n");
         return -1;
     }
-
     hdcVals.hdcObjects[hdc].penIndex = index;
 
     return 0;
@@ -286,7 +285,7 @@ int sys_fillrect(void) //hdc, pointer to rect
 
     for(int y = pointedRect->bottom; y <= pointedRect->top;y++) //fills the rectangle by drawing each line
     {
-        LineDraw(pointedRect->left,y,pointedRect->right,y);
+        LineDraw(pointedRect->left,y,pointedRect->right,y,hdc);
     }
 
     return 0;
