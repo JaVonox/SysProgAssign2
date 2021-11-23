@@ -33,6 +33,8 @@ int lineto(int,int,int); //hdc,x,y
 int setpencolour(int,int,int,int); //index r g b
 int selectpen(int, int); //hdc index
 int fillrect(int, struct rect*); //hdc, pointer to a rect
+int beginpaint(int);
+int endpaint(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

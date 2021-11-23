@@ -3,19 +3,9 @@
 #include "memlayout.h"
 #include "x86.h"
 #include "rect.h"
+#include "hdc.h"
 
-typedef struct 
-{ //Stores the current graphics cursor position
-    int x; //Due to the nature of ints, x and y are defaulted to 0 each. Hence fufilling the requirement for default values.
-    int y;
-    int penIndex; //the index of the pen. defaults to white
-} moveToXY;
-
-moveToXY cursor = { //default values for the cursor
-    .x = 0,
-    .y = 0,
-    .penIndex = 15
-};
+static struct hdcArray hdcVals = {};
 
 int SimpleAbs(int a) //Simple implementation of Abs
 {
@@ -43,13 +33,13 @@ void PixelSetterFunc(int hdc,int x,int y)
 {
 	uchar* pixMem = (uchar*)P2V(0xA0000);
 	ushort offset = (320 * y) + x; //320 due to the screen width
-	pixMem[offset] = cursor.penIndex; //Sets value at offset
+	pixMem[offset] = hdcVals.hdcObjects[hdc].penIndex; //Sets value at offset
 }
 
-void MovePos(int x,int y) //Changes the base position of the graphics cursor. Called by moveto and lineto.
+void MovePos(int hdc, int x,int y) //Changes the base position of the graphics cursor. Called by moveto and lineto.
 {
-    cursor.x = x;
-    cursor.y = y;
+    hdcVals.hdcObjects[hdc].x = x;
+    hdcVals.hdcObjects[hdc].y = y;
 }
 
 void clear320x200x256() {
@@ -74,6 +64,12 @@ int sys_setpixel(void) //int hdc, int x, int y
         cprintf("An error occured in the pixel setter function, cancelling its operation. Ensure all arguments were valid.\n");
         return -1;
     }
+
+    if(hdc < 0)
+    {
+        cprintf("Invalid HDC value: %d \n", hdc);
+        return -1;
+    }
 	
     ValueCapper(&x,319);
     ValueCapper(&y,199);
@@ -93,10 +89,16 @@ int sys_moveto(void) //int hdc, int x, int y
         return -1;
     }
 
+    if(hdc < 0)
+    {
+        cprintf("Invalid HDC value: %d \n", hdc);
+        return -1;
+    }
+
     ValueCapper(&x,319);
     ValueCapper(&y,199);
 
-    MovePos(x,y);
+    MovePos(hdc,x,y);
 
     return 0;
 }
@@ -180,12 +182,18 @@ int sys_lineto(void) //int hdc, int nx, int ny
         return -1;
     }
 
+    if(hdc < 0)
+    {
+        cprintf("Invalid HDC value: %d \n", hdc);
+        return -1;
+    }
+
     ValueCapper(&nx,319);
     ValueCapper(&ny,199);
 
-    LineDraw(cursor.x,cursor.y,nx,ny);
+    LineDraw(hdcVals.hdcObjects[hdc].x,hdcVals.hdcObjects[hdc].y,nx,ny);
 
-    MovePos(nx,ny); //set new position
+    MovePos(hdc,nx,ny); //set new position
     
     return 0;
 }
@@ -237,13 +245,19 @@ int sys_selectpen(void)
         return -1;
     }
 
+    if(hdc < 0)
+    {
+        cprintf("Invalid HDC value: %d \n", hdc);
+        return -1;
+    }
+
     if(index > 255)
     {
         cprintf("This operation would get a pen outside of the allocated memory (16-255) and therefore is not permitted\n");
         return -1;
     }
 
-    cursor.penIndex = index;
+    hdcVals.hdcObjects[hdc].penIndex = index;
 
     return 0;
 }
@@ -255,6 +269,12 @@ int sys_fillrect(void) //hdc, pointer to rect
 
     if(argint(0,&hdc) < 0 || argptr(1,(void*)&pointedRect, sizeof(*pointedRect) < 0)) //(void*) stops issues with argptr
     {
+        return -1;
+    }
+
+    if(hdc < 0)
+    {
+        cprintf("Invalid HDC value: %d \n", hdc);
         return -1;
     }
 
@@ -271,4 +291,46 @@ int sys_fillrect(void) //hdc, pointer to rect
 
     return 0;
 
+}
+
+int sys_beginpaint(void)
+{
+    int hwnd;
+
+    if(argint(0,&hwnd) != 0) //hwnd must be 0 
+    {
+        return -1;
+    }
+
+    for (int index = 0; index < 5; index++) {
+        if (hdcVals.hdcObjects[index].init == 0) { //1 means an initialised value
+            struct hdc item;
+            item.init = 1;
+            item.x = 0;
+            item.y = 0;
+            item.penIndex = 15;
+            hdcVals.hdcObjects[index] = item;
+            return index;
+        }
+    }
+
+    return -1;
+}
+
+int sys_endpaint(void)
+{
+    int hdc;
+
+    if(argint(0,&hdc) < 0) 
+    {
+        return -1;
+    }
+
+    if(hdc < 0)
+    {
+        cprintf("Invalid HDC value: %d \n", hdc);
+        return -1;
+    }
+
+    return 0;
 }

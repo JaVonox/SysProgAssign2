@@ -3,6 +3,8 @@
         "types.h": "c",
         "memlayout.h": "c",
         "user.h": "c",
-        "x86.h": "c"
+        "x86.h": "c",
+        "rect.h": "c",
+        "hdc.h": "c"
     }
 }
