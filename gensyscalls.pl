@@ -44,7 +44,8 @@ my @syscalls = (
 				"selectpen",
 				"fillrect",
 				"beginpaint",
-				"endpaint"
+				"endpaint",
+				"getHDC"
 			   );
 
 my $i;			   

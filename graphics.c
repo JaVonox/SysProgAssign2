@@ -325,11 +325,53 @@ int sys_endpaint(void)
         return -1;
     }
 
-    if(hdc < 0)
+    if(hdc < 0 )
     {
-        cprintf("Invalid HDC value: %d \n", hdc);
         return -1;
     }
 
-    return 0;
+    if (hdcVals.hdcObjects[hdc].init == 1) { //Resets all the values in the array at the hdc index, including setting the init to 0 - meaning the space is free
+        struct hdc item;
+        item.init = 0;
+        item.x = 0;
+        item.y = 0;
+        item.penIndex = 15;
+        hdcVals.hdcObjects[hdc] = item;
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
+
+    return -1;
+}
+
+int sys_getHDC(void)
+{
+    //this command allows a user to switch HDC objects at will
+    //It is meant to serve as a demonstration of how HDCs do not interact with one another
+    //This can be done by using the command in an instance of "Painter" to access an existing HDC index
+    //This feature would not be present in any release of the system, but exists to permit demonstration of this feature for stage 3
+
+    int hdc;
+
+    if(argint(0,&hdc) < 0) 
+    {
+        return -1;
+    }
+
+    if(hdc > 5 || hdc < 0) //checks the input is within the acceptable range
+    {
+        return -1;
+    }
+
+    if (hdcVals.hdcObjects[hdc].init == 1) 
+    { 
+        return 0; //returns 0 to permit the system to assign the HDC value if the value is initialised
+    }
+    else
+    {
+        return -1; //returns -1 if the index is not intialised
+    }
 }

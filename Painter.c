@@ -17,7 +17,7 @@ int ExampleSquare(int hdc)
     return errors;
 }
 
-int AcceptInput(char argsBuffer[30][30])
+int AcceptInput(char argsBuffer[30][30]) //TODO set hard character limits
 {
     //gets() for input
     //Split args into different char* and store in global space
@@ -68,34 +68,93 @@ int main(int argc, char *argv[])
     //atoi uses arguments and converts them to their integer values (not using ascii)
     int currentHDC = -1; //stores current HDC value
     printf(1,"Entered Painter\n");
-
+    printf(1,"Enter your command starting with the keyword 'Painter' - type 'Painter -help' for a list of commands\n");
     while(1)
     {
-        printf(1,"HDC%d>",currentHDC);
+        if(currentHDC != -1) //User legibility features
+        {
+            printf(1,"HDC%d>",currentHDC);
+        }
+        else
+        {
+            printf(1,"NoHDC>");
+        }
+
         char argsBuffer[30][30] = {}; //stores the partitioned args in the input
         int argsCount = AcceptInput(argsBuffer); //gets count of arguments
 
         int errorCode=0; //This should always be 0. If the value is -1 this means something failed.
-        if(strcmp(argsBuffer[0],"Painter") != 0)
+        if(strcmp(argsBuffer[1],"-exit") == 0)
         {
-            printf(1,"All commands must be preceeded by the word 'Painter'\n");
-        }
-        else if(strcmp(argsBuffer[1],"-nHDC") == 0 && argsCount >= 0) //-nHDC declares a new HDC item
-        {
-            errorCode = beginpaint(0); //create a new HDC object
-            if(errorCode != -1){
-                printf(1,"Created new HDC at index %d\n",errorCode);
-                currentHDC = errorCode;
+            if(currentHDC != -1)
+            {
+                printf(1,"There is currently a HDC device active. This HDC will remain active and can be resumed using the -gHDC command\n");
+                printf(1,"If you would rather delete the HDC please use the -kHDC command before using -exit\n");
+                printf(1,"Do you still want to proceed with exiting painter, leaving the current HDC active (enter y for yes)?\n");
+                printf(1,"exit?>");
+
+                char argumentInput[10];
+                gets(argumentInput,2);
+
+                if(argumentInput[0] == 'y')
+                {
+                    printf(1,"Quitting Painter, leaving HDC %d active.\n",currentHDC);
+                    break;
+                }             
+                printf(1,"\n");
+            }
+            else
+            {
+                printf(1,"Quitting Painter\n");
+                break;
             }
         }
-        else if(strcmp(argsBuffer[1],"-exit") == 0)
+        else if(strcmp(argsBuffer[1],"-gHDC") == 0 && argsCount >= 2)
         {
-            printf(1,"Quitting Painter\n");
-            break;
+
+                printf(1,"This command is designed for debugging/administrative uses only, are you sure you wish to proceed (enter y for yes)?\n");
+                printf(1,"gHDC?>");
+
+                char argumentInput[10];
+                gets(argumentInput,2);
+
+                if(argumentInput[0] == 'y')
+                {
+                    errorCode = getHDC(atoi(argsBuffer[2]));
+
+                    if(errorCode != -1)
+                    {
+                        printf(1, "Switched to HDC %d\n", atoi(argsBuffer[2]));
+                        currentHDC = atoi(argsBuffer[2]); //sets the current HDC to the supplied value
+                    }
+                    else
+                    {
+                        printf(1, "Supplied index was either invalid or there is no existing HDC object at the provided index. Please resubmit your query.\n");
+                    }
+                }
+                else
+                {
+                    printf(1,"\n");
+                }
         }
-        else if(currentHDC == -1)
+        else if(strcmp(argsBuffer[1],"-nHDC") == 0 && argsCount >= 0) //-nHDC declares a new HDC item.
         {
-            printf(1,"No device context is currently selected, use 'Painter -nHDC' to create a new device context.");
+            if(currentHDC != -1)
+            {
+                printf(1,"There is currently another HDC active - please enter 'Painter -kHDC' to delete the current HDC object.\n");
+            }
+            else
+            {
+                errorCode = beginpaint(0); //create a new HDC object
+                if(errorCode != -1){
+                    printf(1,"Created new HDC at index %d\n",errorCode);
+                    currentHDC = errorCode;
+                }
+            }
+        }
+        else if(currentHDC == -1 && strcmp(argsBuffer[1],"-help") != 0)
+        {
+            printf(1,"No device context is currently selected, use 'Painter -nHDC' to create a new device context.\n");
         }
         else if(strcmp(argsBuffer[1],"-e") == 0 && argsCount >= 0) //draw example square
         {
@@ -175,9 +234,28 @@ int main(int argc, char *argv[])
             setvideomode(0x03);
 
         }
-        else
+        else if(strcmp(argsBuffer[1],"-kHDC") == 0 && argsCount >= 1) //dispose of HDC
         {
-            printf(1,"Invalid Arguments. Painter accepts the following arguments:\n -nHDC (Create new HDC) \n -exit (exit the function)) \n -e (Show example image) \n -p [X] [Y] (Draw pixel) \n -l [X] [Y] (Draw line to location) \n -m [X] [Y] (Set cursor position)\n -dp [Index] [R/63] [G/63] [B/63] (declare a new pen at the index with the specified RGB)\n -gp [Index] (Get a pen from the specified index)\n -r [X0] [X1] [Y0] [Y1] (Draws a rectangle)\n");
+            if(currentHDC == -1)
+            {
+                printf(1,"There is currently no HDC selected. Please use -nHDC to create a new device context\n");
+            }
+            else
+            {
+                if(endpaint(currentHDC) == 0) //if the HDC was successfully killed
+                {
+                    currentHDC = -1;
+                    printf(1,"The current HDC object has been released.\n");
+                }
+                else
+                {
+                    printf(1,"An error occured while resetting the HDC object\n"); //This should not occur ideally
+                }
+            }
+        }
+        else //any invalid arguments or -helps fall to here
+        {
+            printf(1,"Painter accepts the following arguments:\n -nHDC (Create new HDC) \n -gHDC [Index] (Get a HDC object from a specific address, this feature is intended for debugging use only) \n -kHDC (Dispose of current HDC) \n -exit (exit the painter) \n -e (Show example image) \n -p [X] [Y] (Draw pixel) \n -l [X] [Y] (Draw line to location) \n -m [X] [Y] (Set cursor position)\n -dp [Index] [R/63] [G/63] [B/63] (declare a new pen at the index with the specified RGB)\n -gp [Index] (Get a pen from the specified index)\n -r [X0] [X1] [Y0] [Y1] (Draws a rectangle)\n");
         }
     }
     exit();
