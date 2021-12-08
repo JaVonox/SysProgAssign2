@@ -4,8 +4,13 @@
 #include "x86.h"
 #include "rect.h"
 #include "hdc.h"
+#include "spinlock.h"
 
-static struct hdcArray hdcVals = {};
+//These values are static between all instances of 
+static struct hdcArray hdcVals = {}; //stores all the hdcs
+static struct spinlock lock; //single static lock to prevent thread/cpu conflicts. 
+//Only one lock is needed as both begin/endpaint access the hdcVals array
+static int lockinit;
 
 int SimpleAbs(int a) //Simple implementation of Abs
 {
@@ -235,7 +240,7 @@ int sys_setpencolour(void) //Operates outside of HDC
     return 0;
 }
 
-int sys_selectpen(void)
+int sys_selectpen(void) 
 {
     int hdc,index;
 
@@ -256,6 +261,7 @@ int sys_selectpen(void)
         cprintf("This operation would get a pen outside of the allocated memory (16-255) and therefore is not permitted\n");
         return -1;
     }
+
     hdcVals.hdcObjects[hdc].penIndex = index;
 
     return 0;
@@ -296,10 +302,20 @@ int sys_beginpaint(void)
 {
     int hwnd;
 
+    if(lockinit != 1) //simple check to see if lock exists.
+    {
+        initlock(&lock, "grapicslock"); //make lock first to avoid any other threads passing this before the lock exists
+        lockinit = 1; //prevents future calls to initlock
+        //beginpaint is expected to always occur before endpaint in any case, therefore a lock must exist in all cases
+    }
+
+
     if(argint(0,&hwnd) != 0) //hwnd must be 0 
     {
         return -1;
     }
+
+    acquire(&lock); //spinlock until access can be made to the hdc static
 
     for (int index = 0; index < 5; index++) {
         if (hdcVals.hdcObjects[index].init == 0) { //1 means an initialised value
@@ -309,9 +325,12 @@ int sys_beginpaint(void)
             item.y = 0;
             item.penIndex = 15;
             hdcVals.hdcObjects[index] = item;
+            release(&lock); //release lock if successful
             return index;
         }
     }
+
+    release(&lock); //release lock if failed
 
     return -1;
 }
@@ -330,6 +349,16 @@ int sys_endpaint(void)
         return -1;
     }
 
+    //Need to acquire the lock while the data is being drawn and the hdc is potentially being dropped
+    acquire(&lock);
+
+    //IMPORTANT TODO
+    //making a new pen and selecting a pen must be queued so that stage 4 can write to data during the lock
+    //Only locking during making a new pen and selecting a pen can potentially cause pen data to be overwritten by other HDCs
+    //during processing
+
+    //Drawing script here
+
     if (hdcVals.hdcObjects[hdc].init == 1) { //Resets all the values in the array at the hdc index, including setting the init to 0 - meaning the space is free
         struct hdc item;
         item.init = 0;
@@ -337,12 +366,11 @@ int sys_endpaint(void)
         item.y = 0;
         item.penIndex = 15;
         hdcVals.hdcObjects[hdc] = item;
+        release(&lock);
         return 0;
     }
-    else
-    {
-        return -1;
-    }
+
+    release(&lock);
 
     return -1;
 }

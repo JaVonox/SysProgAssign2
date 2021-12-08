@@ -5,6 +5,7 @@
         "user.h": "c",
         "x86.h": "c",
         "rect.h": "c",
-        "hdc.h": "c"
+        "hdc.h": "c",
+        "spinlock.h": "c"
     }
 }
