@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
             setvideomode(0x03);
 
         }
-        else if(strcmp(argsBuffer[1],"-kHDC") == 0 && argsCount >= 1) //dispose of HDC
+        else if(strcmp(argsBuffer[1],"-exec") == 0 && argsCount >= 1) //dispose of HDC
         {
             if(currentHDC == -1)
             {
@@ -242,20 +242,26 @@ int main(int argc, char *argv[])
             }
             else
             {
+                setvideomode(0x13);
                 if(endpaint(currentHDC) == 0) //if the HDC was successfully killed
                 {
                     currentHDC = -1;
-                    printf(1,"The current HDC object has been released.\n");
+                    errorCode = 0;
+                    printf(1,"Queued Objects processed\n");
                 }
                 else
                 {
-                    printf(1,"An error occured while resetting the HDC object\n"); //This should not occur ideally
+                    errorCode = -1;
+                    printf(1,"An error occured during execution\n"); //This should not occur ideally
                 }
+
+                if(errorCode != -1){getch();}; 
+                setvideomode(0x03);
             }
         }
         else //any invalid arguments or -helps fall to here
         {
-            printf(1,"Painter accepts the following arguments:\n -nHDC (Create new HDC) \n -gHDC [Index] (Get a HDC object from a specific address, this feature is intended for debugging use only) \n -kHDC (Dispose of current HDC) \n -exit (exit the painter) \n -e (Show example image) \n -p [X] [Y] (Draw pixel) \n -l [X] [Y] (Draw line to location) \n -m [X] [Y] (Set cursor position)\n -dp [Index] [R/63] [G/63] [B/63] (declare a new pen at the index with the specified RGB)\n -gp [Index] (Get a pen from the specified index)\n -r [X0] [X1] [Y0] [Y1] (Draws a rectangle)\n");
+            printf(1,"Painter accepts the following arguments:\n -nHDC (Create new HDC) \n -gHDC [Index] (Get a HDC object from a specific address, this feature is intended for debugging use only) \n -exec (Execute Queued commands) \n -exit (exit the painter) \n -e (Show example image) \n -p [X] [Y] (Draw pixel) \n -l [X] [Y] (Draw line to location) \n -m [X] [Y] (Set cursor position)\n -dp [Index] [R/63] [G/63] [B/63] (declare a new pen at the index with the specified RGB)\n -gp [Index] (Get a pen from the specified index)\n -r [X0] [X1] [Y0] [Y1] (Draws a rectangle)\n");
         }
     }
     exit();

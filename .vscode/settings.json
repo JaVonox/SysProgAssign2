@@ -6,6 +6,7 @@
         "x86.h": "c",
         "rect.h": "c",
         "hdc.h": "c",
-        "spinlock.h": "c"
+        "spinlock.h": "c",
+        "cstdlib": "c"
     }
 }

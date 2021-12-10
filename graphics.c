@@ -1,13 +1,11 @@
+
 #include "types.h"
 #include "defs.h"
 #include "memlayout.h"
 #include "x86.h"
-#include "rect.h"
-#include "hdc.h"
 #include "spinlock.h"
+#include "graphicsQueueables.c"
 
-//These values are static between all instances of 
-static struct hdcArray hdcVals = {}; //stores all the hdcs
 static struct spinlock lock; //single static lock to prevent thread/cpu conflicts. 
 //Only one lock is needed as both begin/endpaint access the hdcVals array
 static int lockinit;
@@ -298,6 +296,27 @@ int sys_fillrect(void) //hdc, pointer to rect
 
 }
 
+
+void AppendCommand(int hdc) //TODO check if the index has reached its limit
+{
+
+    struct commandBuffer commandItemTemp;
+    commandItemTemp.queuedAction = &PixelSetterFuncQueue;
+    commandItemTemp.args = (char *[]){"0","10","20"}; //hdc x y
+    int lastIndex = hdcVals.hdcObjects[hdc].queueEnd;
+
+    //Append the created commandBuffer to the queue at the current last index
+    hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
+
+    hdcVals.hdcObjects[hdc].queueEnd++;
+
+    //To use a queued command
+    //char** params = (char *[]){ "A", "B", "C" };
+    //commandItemTemp.queuedAction(params);
+
+}
+
+
 int sys_beginpaint(void)
 {
     int hwnd;
@@ -324,7 +343,11 @@ int sys_beginpaint(void)
             item.x = 0;
             item.y = 0;
             item.penIndex = 15;
+            item.queueEnd =0;
             hdcVals.hdcObjects[index] = item;
+
+            AppendCommand(index);
+
             release(&lock); //release lock if successful
             return index;
         }
@@ -352,12 +375,19 @@ int sys_endpaint(void)
     //Need to acquire the lock while the data is being drawn and the hdc is potentially being dropped
     acquire(&lock);
 
+    for(int i=0;i<hdcVals.hdcObjects[hdc].queueEnd;i++) //Iterate through all queued commands
+    {
+        hdcVals.hdcObjects[hdc].commandQueue[i].queuedAction(hdcVals.hdcObjects[hdc].commandQueue[i].args);
+    }
+
+    //hdcVals.hdcObjects[hdc].queueEnd = 0; //Sets end of queue to 0, effectively resetting the queue
+    //May be worth clearing the array properly
+
     //IMPORTANT TODO
     //making a new pen and selecting a pen must be queued so that stage 4 can write to data during the lock
     //Only locking during making a new pen and selecting a pen can potentially cause pen data to be overwritten by other HDCs
     //during processing
 
-    //Drawing script here
 
     if (hdcVals.hdcObjects[hdc].init == 1) { //Resets all the values in the array at the hdc index, including setting the init to 0 - meaning the space is free
         struct hdc item;
