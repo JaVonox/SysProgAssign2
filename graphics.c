@@ -297,26 +297,6 @@ int sys_fillrect(void) //hdc, pointer to rect
 }
 
 
-void AppendCommand(int hdc) //TODO check if the index has reached its limit
-{
-
-    struct commandBuffer commandItemTemp;
-    commandItemTemp.queuedAction = &PixelSetterFuncQueue;
-    commandItemTemp.args = (char *[]){"0","10","20"}; //hdc x y
-    int lastIndex = hdcVals.hdcObjects[hdc].queueEnd;
-
-    //Append the created commandBuffer to the queue at the current last index
-    hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
-
-    hdcVals.hdcObjects[hdc].queueEnd++;
-
-    //To use a queued command
-    //char** params = (char *[]){ "A", "B", "C" };
-    //commandItemTemp.queuedAction(params);
-
-}
-
-
 int sys_beginpaint(void)
 {
     int hwnd;
@@ -346,7 +326,10 @@ int sys_beginpaint(void)
             item.queueEnd =0;
             hdcVals.hdcObjects[index] = item;
 
-            AppendCommand(index);
+            AppendPixel(index,"10","20");
+            AppendPixel(index,"10","10");
+            AppendPixel(index,"20","10");
+            AppendPixel(index,"20","20");
 
             release(&lock); //release lock if successful
             return index;
@@ -379,6 +362,7 @@ int sys_endpaint(void)
     {
         hdcVals.hdcObjects[hdc].commandQueue[i].queuedAction(hdcVals.hdcObjects[hdc].commandQueue[i].args);
     }
+    
 
     //hdcVals.hdcObjects[hdc].queueEnd = 0; //Sets end of queue to 0, effectively resetting the queue
     //May be worth clearing the array properly
