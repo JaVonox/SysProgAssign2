@@ -9,6 +9,12 @@ int GetIntLength(int x)
 {
     int iter=0;
     int xCh=x;
+
+    if(xCh == 0) //in case of HDC 0
+    {
+        iter++;
+    }
+
     while(xCh > 0)
     {
         iter++;
@@ -60,6 +66,7 @@ int PixelSetterFuncQueue(struct argVal *cmdArgs)
     cprintf("%d,",x);
     cprintf("%d\n",y);
 
+    //IDE has issues with this but it all works so ignore any issues here
 	uchar* pixMem = (uchar*)P2V(0xA0000);
 	ushort offset = (320 * y) + x; //320 due to the screen width
 	pixMem[offset] = hdcVals.hdcObjects[hdc].penIndex; //Sets value at offset
@@ -81,8 +88,7 @@ void AppendArg(char* argument, struct commandBuffer *buffer) //appends all the a
     strncpy(tmpArg.argumentVal,argument,sizeof(argument));
 
     buffer->args[buffer->lastArgSet] = tmpArg;
-    buffer->lastArgSet++;
-    cprintf("%d\n",buffer->lastArgSet);
+    buffer->lastArgSet = buffer->lastArgSet +1;
 }
 
 void AppendPixel(int hdc, char* x, char* y) //Adds pixel action to the queue
@@ -93,23 +99,35 @@ void AppendPixel(int hdc, char* x, char* y) //Adds pixel action to the queue
     char str[100];
     ParseChar(hdc,str); //set hdc into str
 
-    //Append these arguments
+    //Append relevant arguments
     AppendArg(str,&commandItemTemp);
 
     AppendArg(x,&commandItemTemp);
-
+    
     AppendArg(y,&commandItemTemp);
 
-    cprintf("%s-",x);
-    cprintf("%s\n",y);
-    
-    cprintf("%s:",commandItemTemp.args[1].argumentVal);
-    cprintf("%s\n",commandItemTemp.args[2].argumentVal);
+    commandItemTemp.buffset = 0; //causes a buffer to reset - this fixes a strange issue where the commandItemTemp would append data
+    //On top of its past instances
 
     int lastIndex = hdcVals.hdcObjects[hdc].queueEnd;
     
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
-    
+
     hdcVals.hdcObjects[hdc].queueEnd++;
 
+}
+
+int sys_writeQueue(void) //takes queue request to be processed at the endpaint
+{
+    int opType;
+    int argsSize;
+    char* argSet[30];
+    argint(0,&opType);
+    argint(1,&argsSize);
+    argptr(2,(char**)&argSet,argsSize);
+
+    cprintf("%s",argSet[0]);
+    cprintf("/%s",argSet[1]);
+
+    return 1;
 }

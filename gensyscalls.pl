@@ -45,7 +45,8 @@ my @syscalls = (
 				"fillrect",
 				"beginpaint",
 				"endpaint",
-				"getHDC"
+				"getHDC",
+				"writeQueue"
 			   );
 
 my $i;			   

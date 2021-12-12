@@ -163,12 +163,19 @@ int main(int argc, char *argv[])
             if(errorCode != -1){getch();} //Expect input
             setvideomode(0x03);
         }
-        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4) //draw pixel
+        else if(strcmp(argsBuffer[1],"-sysp") == 0 && argsCount >= 4) //draw pixel using system call
         {
             setvideomode(0x13);
             errorCode = setpixel(currentHDC,atoi(argsBuffer[2]),atoi(argsBuffer[3])); 
             if(errorCode != -1){getch();} //Expect input
             setvideomode(0x03);
+        }
+        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4) //queue draw pixel
+        {
+            //char tmpArgs[30][30] = {{*argsBuffer[2]},{*argsBuffer[3]}};
+
+            writeQueue(0,sizeof(argsBuffer),argsBuffer); //(char**)&tmpArgs
+            //setpixel(currentHDC,atoi(argsBuffer[2]),atoi(argsBuffer[3])); 
         }
         else if(strcmp(argsBuffer[1],"-l") == 0 && argsCount >= 4) //draw line from cursor
         {
