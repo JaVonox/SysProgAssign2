@@ -27,3 +27,12 @@ struct hdc{
 struct hdcArray{
     struct hdc hdcObjects[5]; //Holds 5 hdc objects
 };
+
+struct argsSet{
+    char* arg0;
+    char* arg1;
+    char* arg2;
+    char* arg3;
+    char* arg4;
+    int argsCount;
+};

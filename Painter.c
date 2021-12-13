@@ -17,6 +17,39 @@ int ExampleSquare(int hdc)
     return errors;
 }
 
+int GetIntLength(int x)
+{
+    int iter=0;
+    int xCh=x;
+
+    if(xCh == 0) //in case of HDC 0
+    {
+        iter++;
+    }
+
+    while(xCh > 0)
+    {
+        iter++;
+        xCh/=10;
+    }
+    return iter;
+}
+
+void ParseChar(int intToChar, char* outChar) //int to char
+{
+    int len = GetIntLength(intToChar);
+    for(int x=0;x<len;x++)
+    {
+        int power=1;
+        for(int y=1;y<(len-x);y++)
+        {
+            power *= 10;
+        }
+        outChar[x] = ((intToChar / power) %10) + 48;
+    }
+    outChar[len] = '\0';
+}
+
 int AcceptInput(char argsBuffer[30][30]) //TODO set hard character limits
 {
     //gets() for input
@@ -170,14 +203,7 @@ int main(int argc, char *argv[])
             if(errorCode != -1){getch();} //Expect input
             setvideomode(0x03);
         }
-        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4) //queue draw pixel
-        {
-            //char tmpArgs[30][30] = {{*argsBuffer[2]},{*argsBuffer[3]}};
-
-            writeQueue(0,sizeof(argsBuffer),argsBuffer); //(char**)&tmpArgs
-            //setpixel(currentHDC,atoi(argsBuffer[2]),atoi(argsBuffer[3])); 
-        }
-        else if(strcmp(argsBuffer[1],"-l") == 0 && argsCount >= 4) //draw line from cursor
+        else if(strcmp(argsBuffer[1],"-sysl") == 0 && argsCount >= 4) //draw line from cursor using system call
         {
             int newX = atoi(argsBuffer[2]);
             int newY = atoi(argsBuffer[3]);
@@ -187,14 +213,14 @@ int main(int argc, char *argv[])
             if(errorCode != -1){printf(1,"Cursor position moved to (%d,%d)\n",newX,newY);}
             setvideomode(0x03);
         }
-        else if(strcmp(argsBuffer[1],"-m") == 0 && argsCount >= 4) //move cursor
+        else if(strcmp(argsBuffer[1],"-sysm") == 0 && argsCount >= 4) //move cursor using system call
         {
             int newX = atoi(argsBuffer[2]);
             int newY = atoi(argsBuffer[3]);
             errorCode = moveto(currentHDC,newX,newY);
             if(errorCode != -1){printf(1,"Cursor position moved to (%d,%d)\n",newX,newY);}
         }
-        else if(strcmp(argsBuffer[1],"-dp") == 0 && argsCount >= 4) //declare pen
+        else if(strcmp(argsBuffer[1],"-sysdp") == 0 && argsCount >= 4) //declare pen
         {
             int index = atoi(argsBuffer[2]);
             int r = atoi(argsBuffer[3]);
@@ -203,13 +229,13 @@ int main(int argc, char *argv[])
             errorCode = setpencolour(index,r,g,b);
             if(errorCode != -1){printf(1,"Set new pen colour at index %d\n",index);}
         }
-        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3) //get pen
+        else if(strcmp(argsBuffer[1],"-sysgp") == 0 && argsCount >= 3) //get pen
         {
             int pen = atoi(argsBuffer[2]);
             errorCode =selectpen(currentHDC,pen);
             if(errorCode != -1){printf(1,"Got Pen %d\n",pen);}
         }
-        else if(strcmp(argsBuffer[1],"-r") == 0 && argsCount >= 5) //draw rect
+        else if(strcmp(argsBuffer[1],"-sysr") == 0 && argsCount >= 5) //draw rect
         {
 
             int x0 = atoi(argsBuffer[2]);
@@ -241,6 +267,91 @@ int main(int argc, char *argv[])
             setvideomode(0x03);
 
         }
+        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4) //queue draw pixel
+        {
+            //TODO VALUE LIMITING
+            struct argsSet args;
+            args.arg0 = argsBuffer[2];
+            args.arg1 = argsBuffer[3];
+            writeQueue(currentHDC,0,&args); 
+            printf(1,"Queued pixel setting action\n");
+        }
+        else if(strcmp(argsBuffer[1],"-l") == 0 && argsCount >= 4) //draw line from cursor
+        {
+            //TODO VALUE LIMITING
+            struct argsSet args;
+            args.arg0 = argsBuffer[2];
+            args.arg1 = argsBuffer[3];
+            writeQueue(currentHDC,1,&args);
+            printf(1,"Queued line drawing and cursor movement\n");
+
+        }
+        else if(strcmp(argsBuffer[1],"-m") == 0 && argsCount >= 4) //move cursor
+        {
+            //TODO VALUE LIMITING
+            struct argsSet args;
+            args.arg0 = argsBuffer[2];
+            args.arg1 = argsBuffer[3];
+
+            writeQueue(currentHDC,2,&args);
+            printf(1,"Queued cursor movement\n");
+        }
+        else if(strcmp(argsBuffer[1],"-dp") == 0 && argsCount >= 4) //declare pen
+        {
+            //TODO VALUE LIMITING
+            struct argsSet args;
+            args.arg0 = argsBuffer[2]; //index
+            args.arg1 = argsBuffer[3]; //R
+            args.arg2 = argsBuffer[4]; //G
+            args.arg3 = argsBuffer[5]; //B
+
+            writeQueue(currentHDC,3,&args);
+            printf(1,"Queued pen declaration\n");
+        }
+        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3) //get pen
+        {
+            //TODO VALUE LIMITING
+            struct argsSet args;
+            args.arg0 = argsBuffer[2]; //index
+
+            writeQueue(currentHDC,4,&args);
+            printf(1,"Queued pen get\n");
+        }
+        else if(strcmp(argsBuffer[1],"-r") == 0 && argsCount >= 5) //draw rect
+        {
+            //TODO value limiting
+
+            int x0 = atoi(argsBuffer[2]);
+            int x1 = atoi(argsBuffer[3]);
+
+            int y0 = atoi(argsBuffer[4]);
+            int y1 = atoi(argsBuffer[5]);
+
+            //Sort X values and Y values into top/bottom left/right
+            int topY,botX,botY,topX;
+
+            topY = (y0 > y1) ? y0 : y1;
+            botY = (y0 > y1) ? y1 : y0;
+
+            topX = (x0 > x1) ? x0 : x1;
+            botX = (x0 > x1) ? x1 : x0;
+
+            struct argsSet args;
+            char arg0tmp[50],arg1tmp[50],arg2tmp[50],arg3tmp[50];
+            ParseChar(topY,arg0tmp);
+            ParseChar(botY,arg1tmp);
+            ParseChar(topX,arg2tmp);
+            ParseChar(botX,arg3tmp);
+
+            args.arg0 = arg0tmp;
+            args.arg1 = arg1tmp;
+            args.arg2 = arg2tmp;
+            args.arg3 = arg3tmp;
+
+            writeQueue(currentHDC,5,&args);
+            printf(1,"Queued rectangle drawing\n");
+
+        }
         else if(strcmp(argsBuffer[1],"-exec") == 0 && argsCount >= 1) //dispose of HDC
         {
             if(currentHDC == -1)
@@ -254,7 +365,7 @@ int main(int argc, char *argv[])
                 {
                     currentHDC = -1;
                     errorCode = 0;
-                    printf(1,"Queued Objects processed\n");
+                    printf(1,"Queued objects processed. HDC dumped.\n");
                 }
                 else
                 {

@@ -1,6 +1,7 @@
 struct stat;
 struct rtcdate;
 struct rect;
+struct argsSet;
 
 // system calls
 int fork(void);
@@ -36,7 +37,7 @@ int fillrect(int, struct rect*); //hdc, pointer to a rect
 int beginpaint(int); //hwnd (always 0)
 int endpaint(int); //hdc value
 int getHDC(int); //hdc to get
-int writeQueue(int,int,char[30][30]);
+int writeQueue(int,int,struct argsSet*); //hdc,opType,args
 
 // ulib.c
 int stat(const char*, struct stat*);

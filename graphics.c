@@ -10,18 +10,6 @@ static struct spinlock lock; //single static lock to prevent thread/cpu conflict
 //Only one lock is needed as both begin/endpaint access the hdcVals array
 static int lockinit;
 
-int SimpleAbs(int a) //Simple implementation of Abs
-{
-    if(a < 0)
-    {
-        return a*-1;
-    }
-    else
-    {
-        return a;
-    }
-}
-
 void ValueCapper(int *a,int capacity)
 {
     if((*a) > capacity || (*a) < 0)
@@ -30,19 +18,6 @@ void ValueCapper(int *a,int capacity)
     }
     *a = ((*a) > capacity) ? capacity : *a;
     *a = ((*a) < 0) ? 0 : *a;
-}
-
-void PixelSetterFunc(int hdc,int x,int y)
-{
-	uchar* pixMem = (uchar*)P2V(0xA0000);
-	ushort offset = (320 * y) + x; //320 due to the screen width
-	pixMem[offset] = hdcVals.hdcObjects[hdc].penIndex; //Sets value at offset
-}
-
-void MovePos(int hdc, int x,int y) //Changes the base position of the graphics cursor. Called by moveto and lineto.
-{
-    hdcVals.hdcObjects[hdc].x = x;
-    hdcVals.hdcObjects[hdc].y = y;
 }
 
 void clear320x200x256() {
@@ -106,75 +81,6 @@ int sys_moveto(void) //int hdc, int x, int y
     return 0;
 }
 
-void XIncPlotter(int x0, int y0, int x1, int y1, int hdc) //Bresenham but from x0 to x1
-{
-    int xInc = (x1 - x0);
-    int yInc = (y1 - y0);
-
-    int D = 2*yInc - xInc;
-    int curY = y0;
-    for (int curX = x0; curX <= x1; curX++)
-    {
-        PixelSetterFunc(hdc,curX, curY);
-        if(D > 0)
-        {
-            curY = curY + 1;
-            D = D - 2*xInc;
-        }
-        D = D + 2*yInc;
-    }
-}
-
-void YIncPlotter(int x0, int y0, int x1, int y1, int hdc) //Bresenham but from y0 to y1
-{
-    int xInc = (x1 - x0);
-    int yInc = (y1 - y0);
-
-    int D = 2*xInc - yInc;
-    int curX = x0;
-    for (int curY = y0; curY <= y1; curY++)
-    {
-        PixelSetterFunc(hdc,curX, curY);
-        if(D > 0)
-        {
-            curX = curX + 1;
-            D = D - 2*yInc;
-        }
-        D = D + 2*xInc;
-    }
-}
-
-void LineDraw(int x0,int y0, int x1,int y1, int hdc)
-{
-    //Bresenham's line algorithm
-
-    int xDif = (x1 - x0); //Difference in x - can be positive or negative
-    int yDif = (y1 - y0); //Difference in y - can be positive or negative
-
-    if(SimpleAbs(yDif) < SimpleAbs(xDif)) //Check if the positive yDif is less than the positive xDif
-    {
-        if(xDif <= 0) //If x goes from low to high
-        {
-            XIncPlotter(x1,y1,x0,y0,hdc);
-        }
-        else //high to low
-        {
-            XIncPlotter(x0,y0,x1,y1,hdc);
-        }
-    }
-    else
-    {
-        if(yDif <= 0) //If y goes from low to high
-        {
-            YIncPlotter(x1,y1,x0,y0,hdc);
-        }
-        else //high to low
-        {
-            YIncPlotter(x0,y0,x1,y1,hdc);
-        }
-    }
-
-}
 int sys_lineto(void) //int hdc, int nx, int ny
 {
     int hdc,nx,ny;
@@ -325,11 +231,6 @@ int sys_beginpaint(void)
             item.penIndex = 15;
             item.queueEnd =0;
             hdcVals.hdcObjects[index] = item;
-
-            AppendPixel(index,"10","20");
-            AppendPixel(index,"10","10");
-            AppendPixel(index,"20","10");
-            AppendPixel(index,"20","20");
 
             release(&lock); //release lock if successful
             return index;
