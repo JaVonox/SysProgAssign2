@@ -17,6 +17,8 @@ int ExampleSquare(int hdc)
     return errors;
 }
 
+//Duplicate functions for various purposes
+
 int GetIntLength(int x)
 {
     int iter=0;
@@ -50,21 +52,21 @@ void ParseChar(int intToChar, char* outChar) //int to char
     outChar[len] = '\0';
 }
 
-int AcceptInput(char argsBuffer[30][30]) //TODO set hard character limits
+int AcceptInput(char argsBuffer[30][50])
 {
     //gets() for input
     //Split args into different char* and store in global space
     //return arg count
 
-    char inputbuffer[30];
+    char inputbuffer[50];
 
-    gets(inputbuffer,25); //get input
+    gets(inputbuffer,49); //get input
     int inputLen= strlen(inputbuffer) - 1; //length -1 (to skip the end character)
     
     int charIter=0;
     int wordIter=0;
 
-    char preBuffArgs[30][30]= {}; //before any fixing can be done to the arg order
+    char preBuffArgs[30][50]= {}; //before any fixing can be done to the arg order
     for(int i=0;i<inputLen;i++)
     {
         if( inputbuffer[i] == ' ' || inputbuffer[i] == '\0' ) //check for space or newline char
@@ -78,6 +80,11 @@ int AcceptInput(char argsBuffer[30][30]) //TODO set hard character limits
             preBuffArgs[wordIter][charIter] = inputbuffer[i];
             charIter++; //increment the character value
         }
+    }
+
+    if(inputLen >= 48) //if the input len reaches the maximum input value
+    {
+        return -1;
     }
 
     int lastIndex =0; //count the index of the argument
@@ -100,6 +107,7 @@ int main(int argc, char *argv[])
 
     //atoi uses arguments and converts them to their integer values (not using ascii)
     int currentHDC = -1; //stores current HDC value
+    int mode = 0; //0 == queuemode, 1 == system call mode
     printf(1,"Entered Painter\n");
     printf(1,"Enter your command starting with the keyword 'Painter' - type 'Painter -help' for a list of commands\n");
     while(1)
@@ -113,28 +121,23 @@ int main(int argc, char *argv[])
             printf(1,"NoHDC>");
         }
 
-        char argsBuffer[30][30] = {}; //stores the partitioned args in the input
+        char argsBuffer[30][50] = {}; //stores the partitioned args in the input
         int argsCount = AcceptInput(argsBuffer); //gets count of arguments
 
         int errorCode=0; //This should always be 0. If the value is -1 this means something failed.
-        if(strcmp(argsBuffer[1],"-exit") == 0)
+        
+        if(argsCount == -1)
+        {
+            //There is an issue where inputs that are too long may be interpreted as seperate commands but this issue is uncommon
+            printf(1,"Command exceeded maximum input length. Please reenter your query.\n");
+        }
+        else if(strcmp(argsBuffer[1],"-exit") == 0)
         {
             if(currentHDC != -1)
             {
-                printf(1,"There is currently a HDC device active. This HDC will remain active and can be resumed using the -gHDC command\n");
-                printf(1,"If you would rather delete the HDC please use the -kHDC command before using -exit\n");
-                printf(1,"Do you still want to proceed with exiting painter, leaving the current HDC active (enter y for yes)?\n");
-                printf(1,"exit?>");
-
-                char argumentInput[10];
-                gets(argumentInput,2);
-
-                if(argumentInput[0] == 'y')
-                {
-                    printf(1,"Quitting Painter, leaving HDC %d active.\n",currentHDC);
-                    break;
-                }             
-                printf(1,"\n");
+                endpaint(currentHDC,0); //dumps the HDC without displaying queued data
+                printf(1,"Quit painter and dumped HDC\n",currentHDC);
+                break;
             }
             else
             {
@@ -142,39 +145,11 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        else if(strcmp(argsBuffer[1],"-gHDC") == 0 && argsCount >= 2)
-        {
-
-                printf(1,"This command is designed for debugging/administrative uses only, are you sure you wish to proceed (enter y for yes)?\n");
-                printf(1,"gHDC?>");
-
-                char argumentInput[10];
-                gets(argumentInput,2);
-
-                if(argumentInput[0] == 'y')
-                {
-                    errorCode = getHDC(atoi(argsBuffer[2]));
-
-                    if(errorCode != -1)
-                    {
-                        printf(1, "Switched to HDC %d\n", atoi(argsBuffer[2]));
-                        currentHDC = atoi(argsBuffer[2]); //sets the current HDC to the supplied value
-                    }
-                    else
-                    {
-                        printf(1, "Supplied index was either invalid or there is no existing HDC object at the provided index. Please resubmit your query.\n");
-                    }
-                }
-                else
-                {
-                    printf(1,"\n");
-                }
-        }
-        else if(strcmp(argsBuffer[1],"-nHDC") == 0 && argsCount >= 0) //-nHDC declares a new HDC item.
+        else if(strcmp(argsBuffer[1],"-nHDC") == 0 && argsCount >= 2) //-nHDC declares a new HDC item.
         {
             if(currentHDC != -1)
             {
-                printf(1,"There is currently another HDC active - please enter 'Painter -kHDC' to delete the current HDC object.\n");
+                printf(1,"There is currently an active HDC\n");
             }
             else
             {
@@ -185,25 +160,62 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        else if(currentHDC == -1 && strcmp(argsBuffer[1],"-help") != 0)
+        else if(strcmp(argsBuffer[1],"-toggleMode") == 0 && argsCount >= 2) //switches to sys if queue and vice versa
         {
-            printf(1,"No device context is currently selected, use 'Painter -nHDC' to create a new device context.\n");
+            mode = (mode == 0) ? 1 : 0; //switches mode between 1 and 0
+            
+            if(mode == 0)
+            {
+                printf(1,"Entered queueing mode\n");
+            }
+            else if(mode == 1)
+            {
+                printf(1,"Entered system call mode (Previous queue will remain active)\n");
+            }
         }
-        else if(strcmp(argsBuffer[1],"-e") == 0 && argsCount >= 0) //draw example square
+        else if(strcmp(argsBuffer[1],"-help") == 0)
+        {
+            if(mode == 0)
+            {
+                printf(1,"You are currently in queue mode. The following commands are available in this mode:\n");
+                printf(1,"-nHDC declares a new HDC at the next available hdc index\n");
+                printf(1,"-exec executes all the queued commands and disposes of the HDC\n");
+            }
+            else if(mode == 1)
+            {
+                printf(1,"You are currently in system call mode. The following commands are available in this mode:\n");
+                printf(1,"-nHDC declares a new HDC at the next available hdc index\n");
+                printf(1,"-e draws an example square\n");
+            }
+
+            printf(1,"-toggleMode switches the system between queue and system call mode and vice versa\n");
+            printf(1,"-p [X] [Y] sets a pixel at a specified X and Y coordinate\n");
+            printf(1,"-l [X] [Y] draws a line towards the specified location from the current graphics cursor position\n");
+            printf(1,"-m [X] [Y] move the graphics cursor to the pecified position\n");
+            printf(1,"-dp [index] [R/63] [G/63] [B/63] declares a new pen at the pen index with the colours specified");
+            printf(1,"-gp [index] gets the pen from the specified index (values 0-15 are preset)\n");
+            printf(1,"-r [X0] [X1] [Y0] [Y1] draws a filled rectangle between the 2 points specified\n");
+            printf(1,"-exit quits the program and disposes of the HDC\n");
+        }
+        else if(currentHDC < 0 || currentHDC > 5)
+        {
+            printf(1,"There is currently no active HDC. enter Painter -nHDC to create a new device context\n");
+        }
+        else if(strcmp(argsBuffer[1],"-e") == 0 && argsCount >= 2 && mode == 1) //draw example square
         {
             setvideomode(0x13);
             errorCode = ExampleSquare(currentHDC);
             if(errorCode != -1){getch();} //Expect input
             setvideomode(0x03);
         }
-        else if(strcmp(argsBuffer[1],"-sysp") == 0 && argsCount >= 4) //draw pixel using system call
+        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4 && mode == 1) //draw pixel using system call
         {
             setvideomode(0x13);
             errorCode = setpixel(currentHDC,atoi(argsBuffer[2]),atoi(argsBuffer[3])); 
             if(errorCode != -1){getch();} //Expect input
             setvideomode(0x03);
         }
-        else if(strcmp(argsBuffer[1],"-sysl") == 0 && argsCount >= 4) //draw line from cursor using system call
+        else if(strcmp(argsBuffer[1],"-l") == 0 && argsCount >= 4 && mode == 1) //draw line from cursor using system call
         {
             int newX = atoi(argsBuffer[2]);
             int newY = atoi(argsBuffer[3]);
@@ -213,14 +225,14 @@ int main(int argc, char *argv[])
             if(errorCode != -1){printf(1,"Cursor position moved to (%d,%d)\n",newX,newY);}
             setvideomode(0x03);
         }
-        else if(strcmp(argsBuffer[1],"-sysm") == 0 && argsCount >= 4) //move cursor using system call
+        else if(strcmp(argsBuffer[1],"-m") == 0 && argsCount >= 4 && mode == 1) //move cursor using system call
         {
             int newX = atoi(argsBuffer[2]);
             int newY = atoi(argsBuffer[3]);
             errorCode = moveto(currentHDC,newX,newY);
             if(errorCode != -1){printf(1,"Cursor position moved to (%d,%d)\n",newX,newY);}
         }
-        else if(strcmp(argsBuffer[1],"-sysdp") == 0 && argsCount >= 4) //declare pen
+        else if(strcmp(argsBuffer[1],"-dp") == 0 && argsCount >= 6 && mode == 1) //declare pen
         {
             int index = atoi(argsBuffer[2]);
             int r = atoi(argsBuffer[3]);
@@ -229,13 +241,13 @@ int main(int argc, char *argv[])
             errorCode = setpencolour(index,r,g,b);
             if(errorCode != -1){printf(1,"Set new pen colour at index %d\n",index);}
         }
-        else if(strcmp(argsBuffer[1],"-sysgp") == 0 && argsCount >= 3) //get pen
+        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3 && mode == 1) //get pen
         {
             int pen = atoi(argsBuffer[2]);
             errorCode =selectpen(currentHDC,pen);
             if(errorCode != -1){printf(1,"Got Pen %d\n",pen);}
         }
-        else if(strcmp(argsBuffer[1],"-sysr") == 0 && argsCount >= 5) //draw rect
+        else if(strcmp(argsBuffer[1],"-r") == 0 && argsCount >= 6 && mode == 1) //draw rect
         {
 
             int x0 = atoi(argsBuffer[2]);
@@ -267,18 +279,16 @@ int main(int argc, char *argv[])
             setvideomode(0x03);
 
         }
-        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4) //queue draw pixel
+        else if(strcmp(argsBuffer[1],"-p") == 0 && argsCount >= 4 && mode == 0) //queue draw pixel
         {
-            //TODO VALUE LIMITING
             struct argsSet args;
             args.arg0 = argsBuffer[2];
             args.arg1 = argsBuffer[3];
             writeQueue(currentHDC,0,&args); 
             printf(1,"Queued pixel setting action\n");
         }
-        else if(strcmp(argsBuffer[1],"-l") == 0 && argsCount >= 4) //draw line from cursor
+        else if(strcmp(argsBuffer[1],"-l") == 0 && argsCount >= 4 && mode == 0) //draw line from cursor
         {
-            //TODO VALUE LIMITING
             struct argsSet args;
             args.arg0 = argsBuffer[2];
             args.arg1 = argsBuffer[3];
@@ -286,9 +296,8 @@ int main(int argc, char *argv[])
             printf(1,"Queued line drawing and cursor movement\n");
 
         }
-        else if(strcmp(argsBuffer[1],"-m") == 0 && argsCount >= 4) //move cursor
+        else if(strcmp(argsBuffer[1],"-m") == 0 && argsCount >= 4 && mode == 0) //move cursor
         {
-            //TODO VALUE LIMITING
             struct argsSet args;
             args.arg0 = argsBuffer[2];
             args.arg1 = argsBuffer[3];
@@ -296,9 +305,8 @@ int main(int argc, char *argv[])
             writeQueue(currentHDC,2,&args);
             printf(1,"Queued cursor movement\n");
         }
-        else if(strcmp(argsBuffer[1],"-dp") == 0 && argsCount >= 4) //declare pen
+        else if(strcmp(argsBuffer[1],"-dp") == 0 && argsCount >= 6 && mode == 0) //declare pen
         {
-            //TODO VALUE LIMITING
             struct argsSet args;
             args.arg0 = argsBuffer[2]; //index
             args.arg1 = argsBuffer[3]; //R
@@ -308,19 +316,16 @@ int main(int argc, char *argv[])
             writeQueue(currentHDC,3,&args);
             printf(1,"Queued pen declaration\n");
         }
-        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3) //get pen
+        else if(strcmp(argsBuffer[1],"-gp") == 0 && argsCount >= 3 && mode == 0) //get pen
         {
-            //TODO VALUE LIMITING
             struct argsSet args;
             args.arg0 = argsBuffer[2]; //index
 
             writeQueue(currentHDC,4,&args);
             printf(1,"Queued pen get\n");
         }
-        else if(strcmp(argsBuffer[1],"-r") == 0 && argsCount >= 5) //draw rect
+        else if(strcmp(argsBuffer[1],"-r") == 0 && argsCount >= 6 && mode == 0) //draw rect
         {
-            //TODO value limiting
-
             int x0 = atoi(argsBuffer[2]);
             int x1 = atoi(argsBuffer[3]);
 
@@ -352,7 +357,7 @@ int main(int argc, char *argv[])
             printf(1,"Queued rectangle drawing\n");
 
         }
-        else if(strcmp(argsBuffer[1],"-exec") == 0 && argsCount >= 1) //dispose of HDC
+        else if(strcmp(argsBuffer[1],"-exec") == 0 && argsCount >= 2 && mode == 0) //draw the values from the queue
         {
             if(currentHDC == -1)
             {
@@ -361,7 +366,7 @@ int main(int argc, char *argv[])
             else
             {
                 setvideomode(0x13);
-                if(endpaint(currentHDC) == 0) //if the HDC was successfully killed
+                if(endpaint(currentHDC,1) == 0) //if the HDC was successfully killed
                 {
                     currentHDC = -1;
                     errorCode = 0;
@@ -377,9 +382,9 @@ int main(int argc, char *argv[])
                 setvideomode(0x03);
             }
         }
-        else //any invalid arguments or -helps fall to here
+        else //any invalid arguments fall to here
         {
-            printf(1,"Painter accepts the following arguments:\n -nHDC (Create new HDC) \n -gHDC [Index] (Get a HDC object from a specific address, this feature is intended for debugging use only) \n -exec (Execute Queued commands) \n -exit (exit the painter) \n -e (Show example image) \n -p [X] [Y] (Draw pixel) \n -l [X] [Y] (Draw line to location) \n -m [X] [Y] (Set cursor position)\n -dp [Index] [R/63] [G/63] [B/63] (declare a new pen at the index with the specified RGB)\n -gp [Index] (Get a pen from the specified index)\n -r [X0] [X1] [Y0] [Y1] (Draws a rectangle)\n");
+            printf(1,"Command not recognised for this mode or invalid arguments were supplied. please enter 'Painter -help' for a list of available commands\n");
         }
     }
     exit();

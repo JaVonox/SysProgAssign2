@@ -4,21 +4,11 @@
 #include "memlayout.h"
 #include "x86.h"
 #include "spinlock.h"
-#include "graphicsQueueables.c"
+#include "graphicsQueueables.c" //many functions used in this file are present in graphicsQueueables.c
 
 static struct spinlock lock; //single static lock to prevent thread/cpu conflicts. 
 //Only one lock is needed as both begin/endpaint access the hdcVals array
 static int lockinit;
-
-void ValueCapper(int *a,int capacity)
-{
-    if((*a) > capacity || (*a) < 0)
-    {
-        cprintf("A supplied value exceeded its capacity and was limited\n");
-    }
-    *a = ((*a) > capacity) ? capacity : *a;
-    *a = ((*a) < 0) ? 0 : *a;
-}
 
 void clear320x200x256() {
 	// This function is called from videosetmode.
@@ -245,8 +235,14 @@ int sys_beginpaint(void)
 int sys_endpaint(void)
 {
     int hdc;
+    int executeQueue;
 
     if(argint(0,&hdc) < 0) 
+    {
+        return -1;
+    }
+
+    if(argint(1,&executeQueue) < 0)
     {
         return -1;
     }
@@ -259,20 +255,14 @@ int sys_endpaint(void)
     //Need to acquire the lock while the data is being drawn and the hdc is potentially being dropped
     acquire(&lock);
 
-    for(int i=0;i<hdcVals.hdcObjects[hdc].queueEnd;i++) //Iterate through all queued commands
+    if(executeQueue == 1) //checks the endpaint had the appended function to execute the queued functions
     {
-        hdcVals.hdcObjects[hdc].commandQueue[i].queuedAction(hdcVals.hdcObjects[hdc].commandQueue[i].args);
+        for(int i=0;i<hdcVals.hdcObjects[hdc].queueEnd;i++) //Iterate through all queued commands
+        {
+            hdcVals.hdcObjects[hdc].commandQueue[i].queuedAction(hdcVals.hdcObjects[hdc].commandQueue[i].args);
+        }
     }
     
-
-    //hdcVals.hdcObjects[hdc].queueEnd = 0; //Sets end of queue to 0, effectively resetting the queue
-    //May be worth clearing the array properly
-
-    //IMPORTANT TODO
-    //making a new pen and selecting a pen must be queued so that stage 4 can write to data during the lock
-    //Only locking during making a new pen and selecting a pen can potentially cause pen data to be overwritten by other HDCs
-    //during processing
-
 
     if (hdcVals.hdcObjects[hdc].init == 1) { //Resets all the values in the array at the hdc index, including setting the init to 0 - meaning the space is free
         struct hdc item;
@@ -280,6 +270,7 @@ int sys_endpaint(void)
         item.x = 0;
         item.y = 0;
         item.penIndex = 15;
+        item.queueEnd =0; //resets the queue counter to 0
         hdcVals.hdcObjects[hdc] = item;
         release(&lock);
         return 0;

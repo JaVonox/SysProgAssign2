@@ -64,10 +64,27 @@ void ParseChar(int intToChar, char* outChar) //int to char
     outChar[len] = '\0';
 }
 
-int TempFunc(char *argv[]) //This is a demo function. Should not be usable in the final build
+void ValueCapper(int *a,int capacity)
 {
-    cprintf("Test!");
-    return 0;
+    if((*a) > capacity || (*a) < 0)
+    {
+        cprintf("A supplied value exceeded its capacity and was limited\n");
+    }
+    *a = ((*a) > capacity) ? capacity : *a;
+    *a = ((*a) < 0) ? 0 : *a;
+}
+
+int ValueCapperChar(char* a,int capacity) //accepts a char and returns values in order to properly value cap
+{
+    int parsed = ParseInt(a);
+    if(parsed > capacity || parsed < 0)
+    {
+        cprintf("A supplied value exceeded its capacity and was limited\n");
+    }
+    parsed = (parsed > capacity) ? capacity : parsed;
+    parsed = (parsed < 0) ? 0 : parsed;
+
+    return parsed;
 }
 
 int PixelSetterFuncQueue(struct argVal *cmdArgs)
@@ -76,7 +93,6 @@ int PixelSetterFuncQueue(struct argVal *cmdArgs)
     int x = ParseInt(cmdArgs[1].argumentVal);
     int y = ParseInt(cmdArgs[2].argumentVal);
 
-
     //IDE has issues with this but it all works so ignore any issues here
 	uchar* pixMem = (uchar*)P2V(0xA0000);
 	ushort offset = (320 * y) + x; //320 due to the screen width
@@ -84,7 +100,7 @@ int PixelSetterFuncQueue(struct argVal *cmdArgs)
     return 0;
 }
 
-void PixelSetterFunc(int hdc,int x,int y)
+void PixelSetterFunc(int hdc,int x,int y) //unqueued pixel setter - used by other queued objects.
 {
 	uchar* pixMem = (uchar*)P2V(0xA0000);
 	ushort offset = (320 * y) + x; //320 due to the screen width
@@ -281,13 +297,16 @@ void AppendArg(char* argument, struct commandBuffer *buffer) //appends all the a
     buffer->lastArgSet = buffer->lastArgSet +1;
 }
 
-void AppendPixel(int hdc, char* x, char* y) //Adds pixel action to the queue
+int AppendPixel(int hdc, char* x, char* y) //Adds pixel action to the queue
 {
     struct commandBuffer commandItemTemp;
     commandItemTemp.queuedAction = &PixelSetterFuncQueue;
 
     char str[100];
     ParseChar(hdc,str); //set hdc into str
+
+    ParseChar(ValueCapperChar(x,319),x);
+    ParseChar(ValueCapperChar(y,199),y);
 
     //Append relevant arguments
     AppendArg(str,&commandItemTemp);
@@ -304,10 +323,11 @@ void AppendPixel(int hdc, char* x, char* y) //Adds pixel action to the queue
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
 
     hdcVals.hdcObjects[hdc].queueEnd++;
+    return 0;
 
 }
 
-void AppendLineTo(int hdc,char* x1,char* y1) //draw line added to the queue
+int AppendLineTo(int hdc,char* x1,char* y1) //draw line added to the queue
 {
     struct commandBuffer commandItemTemp;
     commandItemTemp.queuedAction = &LineDrawFunc;
@@ -315,6 +335,9 @@ void AppendLineTo(int hdc,char* x1,char* y1) //draw line added to the queue
     char str[100];
     ParseChar(hdc,str); //set hdc into str
 
+    ParseChar(ValueCapperChar(x1,319),x1);
+    ParseChar(ValueCapperChar(y1,199),y1);
+
     //Append relevant arguments
     AppendArg(str,&commandItemTemp);
     AppendArg(x1,&commandItemTemp);
@@ -328,9 +351,10 @@ void AppendLineTo(int hdc,char* x1,char* y1) //draw line added to the queue
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
 
     hdcVals.hdcObjects[hdc].queueEnd++;
+    return 0;
 }
 
-void AppendCursorMove(int hdc,char* x1,char* y1) //Add cursor movement to the queue
+int AppendCursorMove(int hdc,char* x1,char* y1) //Add cursor movement to the queue
 {
     struct commandBuffer commandItemTemp;
     commandItemTemp.queuedAction = &MovePosFunc;
@@ -338,6 +362,9 @@ void AppendCursorMove(int hdc,char* x1,char* y1) //Add cursor movement to the qu
     char str[100];
     ParseChar(hdc,str); //set hdc into str
 
+    ParseChar(ValueCapperChar(x1,319),x1);
+    ParseChar(ValueCapperChar(y1,199),y1);
+
     //Append relevant arguments
     AppendArg(str,&commandItemTemp);
     AppendArg(x1,&commandItemTemp);
@@ -351,15 +378,21 @@ void AppendCursorMove(int hdc,char* x1,char* y1) //Add cursor movement to the qu
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
 
     hdcVals.hdcObjects[hdc].queueEnd++;
+    return 0;
 }
 
-void AppendDeclarePen(int hdc,char* index, char* r, char* g, char* b) //Adds new pen declaration to the queue
+int AppendDeclarePen(int hdc,char* index, char* r, char* g, char* b) //Adds new pen declaration to the queue
 {
     struct commandBuffer commandItemTemp;
     commandItemTemp.queuedAction = &DeclarePenFunc;
 
     char str[100];
     ParseChar(hdc,str); //set hdc into str
+
+    ParseChar(ValueCapperChar(index,50),index);
+    ParseChar(ValueCapperChar(r,63),r);
+    ParseChar(ValueCapperChar(g,63),g);
+    ParseChar(ValueCapperChar(b,63),b);
 
     //Append relevant arguments
     AppendArg(str,&commandItemTemp);
@@ -376,15 +409,18 @@ void AppendDeclarePen(int hdc,char* index, char* r, char* g, char* b) //Adds new
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
 
     hdcVals.hdcObjects[hdc].queueEnd++;
+    return 0;
 }
 
-void AppendGetPen(int hdc,char* index) //Adds new pen declaration to the queue
+int AppendGetPen(int hdc,char* index) //Adds new pen declaration to the queue
 {
     struct commandBuffer commandItemTemp;
     commandItemTemp.queuedAction = &GetPenFunc;
 
     char str[100];
     ParseChar(hdc,str); //set hdc into str
+
+    ParseChar(ValueCapperChar(index,50),index);
 
     //Append relevant arguments
     AppendArg(str,&commandItemTemp);
@@ -398,15 +434,21 @@ void AppendGetPen(int hdc,char* index) //Adds new pen declaration to the queue
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
 
     hdcVals.hdcObjects[hdc].queueEnd++;
+    return 0;
 }
 
-void AppendDrawRect(int hdc,char* topY,char* botY,char* topX,char* botX) //Adds new pen declaration to the queue
+int AppendDrawRect(int hdc,char* topY,char* botY,char* topX,char* botX) //Adds new pen declaration to the queue
 {
     struct commandBuffer commandItemTemp;
     commandItemTemp.queuedAction = &DrawRect;
 
     char str[100];
+
     ParseChar(hdc,str); //set hdc into str
+    ParseChar(ValueCapperChar(topY,199),topY);
+    ParseChar(ValueCapperChar(botY,199),botY);
+    ParseChar(ValueCapperChar(topX,319),topX);
+    ParseChar(ValueCapperChar(botX,319),botX);
 
     //Append relevant arguments
     AppendArg(str,&commandItemTemp);
@@ -423,6 +465,7 @@ void AppendDrawRect(int hdc,char* topY,char* botY,char* topX,char* botX) //Adds 
     hdcVals.hdcObjects[hdc].commandQueue[lastIndex] = commandItemTemp;
 
     hdcVals.hdcObjects[hdc].queueEnd++;
+    return 0;
 }
 
 int sys_writeQueue(void) //takes queue request to be processed at the endpaint
